@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+
+import argparse
+import chromescript
+
+
+def get_proc_args(opts):
+    return {arg: getattr(opts, arg) for arg in [
+        'pid', 'profile', 'path'
+    ]}
+
+
+def open_url(opts):
+    proc_args = get_proc_args(opts)
+    proc_args['new_tab'] = (not opts.reuse_tab)
+
+    proc_dir = chromescript.ChromeDirectory()
+    proc_dir.cache_procs()
+    proc_dir.open_url(opts.url, **proc_args)
+
+
+def main():
+    app_description = """
+    Control multiple Google Chrome processes via Applescript.
+    """.strip()
+
+    parser = argparse.ArgumentParser(description=app_description)
+    parser.add_argument('--pid', '-p', type=int,
+                        help='target process by PID')
+    parser.add_argument('--profile',
+                        help='target process by profile name')
+    parser.add_argument('--path',
+                        help='target process by config directory path')
+    subparsers = parser.add_subparsers()
+
+    open_p = subparsers.add_parser('open', help='Open the given URL')
+    open_p.add_argument('url', help="URL to open")
+    open_p.add_argument('--reuse-tab', '-r', action='store_true',
+                        help='Reuse the current tab')
+    open_p.set_defaults(func=open_url)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == '__main__':
+    main()

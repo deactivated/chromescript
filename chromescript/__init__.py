@@ -10,6 +10,17 @@ from appscript import app, k
 __all__ = ["ChromeProcess"]
 
 
+class ASProperty(object):
+    def __init__(self, path):
+        self.path = path.split(".")
+
+    def __get__(self, instance, owner):
+        obj = instance
+        for part in self.path:
+            obj = getattr(obj, part)
+        return obj.get()
+
+
 def lsof(fmt, opts):
     p = Popen(("/usr/sbin/lsof", "-F", fmt) + tuple(opts),
               stdout=PIPE, stderr=PIPE)
@@ -78,13 +89,16 @@ class ChromeDirectory(object):
         if pid:
             return self.pid_map[pid]
 
+        return self.pid_map.values()[0]
+
     def open_url(self, url, new_tab=True, path=None, pid=None, profile=None):
         "Convenience method to open a URL in a Chrome Process."
         proc = self.get_process(path=path, pid=pid, profile=profile)
         if profile:
-            wind = proc.get_window(profile=profile)
+            wind = proc.get_window(profile=profile, index=0)
         else:
             wind = proc.first_window
+
         if new_tab:
             wind.open_tab(url)
         else:
@@ -108,12 +122,20 @@ class ChromeProcess(object):
             profiles[name] = prof_winds
         return profiles
 
-    def get_window(self, id=None, profile=None):
+    def get_window(self, id=None, profile=None, index=None):
         if profile:
             wind_map = self.profile_window_map()
-            id = next(iter(wind_map[profile]))
+            windows = wind_map[profile]
+        else:
+            windows = self.app.windows
 
-        wind = self.app.windows.ID(id).get()
+        if index:
+            windows = sorted(windows, key=lambda win: win.index.get())
+            wind = windows[max(0, min(index, len(windows) - 1))]
+        else:
+            wind_id = next(iter(wind_map[profile]))
+            wind = self.app.windows.ID(wind_id).get()
+
         return ChromeWindow(self, wind)
 
     def open_window(self, url=None):
@@ -161,6 +183,8 @@ class ChromeWindow(object):
     @url.setter
     def url(self, url):
         self.active_tab.url = url
+
+    index = ASProperty("handle.index")
 
 
 class ChromeTab(object):

@@ -15,7 +15,6 @@ def open_url(opts):
     proc_args['new_tab'] = (not opts.reuse_tab)
 
     proc_dir = chromescript.ChromeDirectory()
-    proc_dir.cache_procs()
     proc_dir.open_url(opts.url, **proc_args)
 
 

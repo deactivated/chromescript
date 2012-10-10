@@ -7,6 +7,8 @@ from collections import defaultdict
 from snss import SNSSFile
 from appscript import app, k
 
+from .cocoa import NSRunningApplication
+
 __all__ = ["ChromeProcess"]
 
 
@@ -104,6 +106,8 @@ class ChromeDirectory(object):
         else:
             wind.url = url
 
+        wind.activate()
+
 
 class ChromeProcess(object):
 
@@ -129,8 +133,10 @@ class ChromeProcess(object):
         else:
             windows = self.app.windows
 
-        if index:
-            windows = sorted(windows, key=lambda win: win.index.get())
+        if index is not None:
+            windows = sorted((self.app.windows.ID(wind_id)
+                              for wind_id in windows),
+                             key=lambda win: win.index.get())
             wind = windows[max(0, min(index, len(windows) - 1))]
         else:
             wind_id = next(iter(wind_map[profile]))
@@ -161,6 +167,11 @@ class ChromeWindow(object):
         self.handle = handle
         self.id = self.handle.id.get()
 
+    def activate(self):
+        self.handle.index.set(1)
+        ns_app = NSRunningApplication.for_pid(self.proc.pid)
+        ns_app.activate(False)
+
     def open_tab(self, url=None):
         tab = ChromeTab(self, self.handle.make(new=k.tab))
         if url:
@@ -185,6 +196,8 @@ class ChromeWindow(object):
         self.active_tab.url = url
 
     index = ASProperty("handle.index")
+    visible = ASProperty("handle.visible")
+    minimized = ASProperty("handle.minimized")
 
 
 class ChromeTab(object):
